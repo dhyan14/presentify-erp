@@ -120,3 +120,52 @@ export function formatDateTime(iso: string): string {
     minute: '2-digit',
   });
 }
+
+/**
+ * Download a DOM element as a PDF file.
+ * Uses dynamic imports of jsPDF + html2canvas to avoid SSR issues.
+ *
+ * @param elementId  - id of the HTML element to capture
+ * @param filename   - output filename, e.g. "hall-ticket.pdf"
+ */
+export async function downloadAsPDF(elementId: string, filename: string): Promise<void> {
+  const element = document.getElementById(elementId);
+  if (!element) {
+    console.error(`[downloadAsPDF] Element #${elementId} not found`);
+    return;
+  }
+
+  // Dynamic imports — not bundled on the server
+  const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+    import('html2canvas'),
+    import('jspdf'),
+  ]);
+
+  const canvas = await html2canvas(element, {
+    scale: 2,          // higher = sharper
+    useCORS: true,
+    allowTaint: true,
+    backgroundColor: '#ffffff',
+    logging: false,
+  });
+
+  const imgData    = canvas.toDataURL('image/png');
+  const pdf        = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const pageWidth  = pdf.internal.pageSize.getWidth();   // 210 mm
+  const pageHeight = pdf.internal.pageSize.getHeight();  // 297 mm
+  const imgHeight  = (canvas.height * pageWidth) / canvas.width;
+  let remaining    = imgHeight;
+  let yOffset      = 0;
+
+  pdf.addImage(imgData, 'PNG', 0, yOffset, pageWidth, imgHeight);
+  remaining -= pageHeight;
+
+  while (remaining > 0) {
+    yOffset -= pageHeight;
+    pdf.addPage();
+    pdf.addImage(imgData, 'PNG', 0, yOffset, pageWidth, imgHeight);
+    remaining -= pageHeight;
+  }
+
+  pdf.save(filename);
+}

@@ -4,9 +4,9 @@ import { useState } from 'react';
 import { useApp, StudentUser, FeeItem } from '@/context/AppContext';
 import {
   CreditCard, CheckCircle2, AlertCircle, Download, X,
-  Smartphone, Building2, Globe, Lock,
+  Smartphone, Building2, Globe, Lock, Loader2,
 } from 'lucide-react';
-import { formatINR, generateReceiptNo, generateTransactionId } from '@/lib/utils';
+import { formatINR, generateReceiptNo, generateTransactionId, downloadAsPDF } from '@/lib/utils';
 import clsx from 'clsx';
 
 type PaymentTab = 'upi' | 'card' | 'netbanking';
@@ -22,6 +22,16 @@ export default function FeeManagement() {
   const [payState,      setPayState]      = useState<PayState>('idle');
   const [showReceipt,   setShowReceipt]   = useState(false);
   const [receiptSnap,   setReceiptSnap]   = useState<{ receiptNo: string; transactionId: string; paidAt: string } | null>(null);
+  const [downloading,   setDownloading]   = useState(false);
+
+  const handleDownloadReceipt = async () => {
+    setDownloading(true);
+    await downloadAsPDF(
+      'receipt-content',
+      `Receipt-${student.rollNo}-AY${fees.academicYear.replace('/', '-')}.pdf`
+    );
+    setDownloading(false);
+  };
 
   const total       = fees.items.reduce((s, i) => s + i.amount, 0);
   const paid        = fees.items.filter((i) => i.paid).reduce((s, i) => s + i.amount, 0);
@@ -237,9 +247,9 @@ export default function FeeManagement() {
               <div className="flex gap-3">
                 <button
                   onClick={() => { setShowPayModal(false); setPayState('idle'); setShowReceipt(true); }}
-                  className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold text-sm transition-all"
+                  className="flex-1 flex items-center justify-center gap-2 bg-violet-600 hover:bg-violet-700 text-white py-3 rounded-xl font-bold text-sm transition-all"
                 >
-                  <Download className="w-4 h-4" /> View Receipt
+                  <Download className="w-4 h-4" /> View &amp; Download Receipt
                 </button>
                 <button
                   onClick={() => { setShowPayModal(false); setPayState('idle'); }}
@@ -261,9 +271,19 @@ export default function FeeManagement() {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => window.print()}
-                className="flex items-center gap-1.5 text-blue-600 hover:text-blue-700 text-sm font-semibold px-3 py-1.5 rounded-lg hover:bg-blue-50 transition-colors"
+                className="flex items-center gap-1.5 text-slate-600 hover:text-slate-800 text-sm font-semibold px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors"
               >
-                <Download className="w-4 h-4" /> Print / PDF
+                🖨 Print
+              </button>
+              <button
+                onClick={handleDownloadReceipt}
+                disabled={downloading}
+                className="flex items-center gap-1.5 bg-violet-600 hover:bg-violet-700 disabled:opacity-60 text-white text-sm font-bold px-4 py-1.5 rounded-lg transition-colors"
+              >
+                {downloading
+                  ? <><Loader2 className="w-4 h-4 animate-spin" /> Generating…</>
+                  : <><Download className="w-4 h-4" /> Download PDF</>
+                }
               </button>
               <button onClick={() => setShowReceipt(false)} className="text-slate-400 hover:text-slate-600">
                 <X className="w-5 h-5" />

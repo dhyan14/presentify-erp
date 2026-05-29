@@ -2,9 +2,10 @@
 
 import { useState } from 'react';
 import { useApp, StudentUser } from '@/context/AppContext';
-import { MOCK_ATTENDANCE, MOCK_EXAM_SCHEDULE, MOCK_USERS } from '@/lib/mockData';
+import { MOCK_ATTENDANCE, MOCK_EXAM_SCHEDULE } from '@/lib/mockData';
 import { QRCodeSVG } from 'qrcode.react';
-import { CheckCircle2, XCircle, AlertTriangle, Printer, Download, X, Shield } from 'lucide-react';
+import { CheckCircle2, XCircle, AlertTriangle, Printer, Download, X, Shield, Loader2 } from 'lucide-react';
+import { downloadAsPDF } from '@/lib/utils';
 import clsx from 'clsx';
 
 export default function HallTicket() {
@@ -13,7 +14,17 @@ export default function HallTicket() {
   const att       = MOCK_ATTENDANCE[student.rollNo as keyof typeof MOCK_ATTENDANCE];
   const fees      = state.fees[student.rollNo];
 
-  const [showModal, setShowModal] = useState(false);
+  const [showModal,    setShowModal]    = useState(false);
+  const [downloading,  setDownloading]  = useState(false);
+
+  const handleDownloadPDF = async () => {
+    setDownloading(true);
+    await downloadAsPDF(
+      'hall-ticket-print',
+      `HallTicket-${student.rollNo}-Sem${student.semester}.pdf`
+    );
+    setDownloading(false);
+  };
 
   // ── Eligibility checks ──
   const attOk  = att.overall >= 75;
@@ -139,9 +150,19 @@ export default function HallTicket() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => window.print()}
-                  className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold px-4 py-2 rounded-xl transition-colors"
+                  className="flex items-center gap-1.5 border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-bold px-4 py-2 rounded-xl transition-colors"
                 >
                   <Printer className="w-4 h-4" /> Print
+                </button>
+                <button
+                  onClick={handleDownloadPDF}
+                  disabled={downloading}
+                  className="flex items-center gap-1.5 bg-violet-600 hover:bg-violet-700 disabled:opacity-60 text-white text-sm font-bold px-4 py-2 rounded-xl transition-colors"
+                >
+                  {downloading
+                    ? <><Loader2 className="w-4 h-4 animate-spin" /> Generating…</>
+                    : <><Download className="w-4 h-4" /> Download PDF</>
+                  }
                 </button>
                 <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600">
                   <X className="w-5 h-5" />
