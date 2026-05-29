@@ -150,13 +150,13 @@ export async function downloadAsPDF(elementId: string, filename: string): Promis
     logging: false,
   });
 
-  const imgData    = canvas.toDataURL('image/png');
-  const pdf        = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  const pageWidth  = pdf.internal.pageSize.getWidth();   // 210 mm
+  const imgData = canvas.toDataURL('image/png');
+  const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const pageWidth = pdf.internal.pageSize.getWidth();   // 210 mm
   const pageHeight = pdf.internal.pageSize.getHeight();  // 297 mm
-  const imgHeight  = (canvas.height * pageWidth) / canvas.width;
-  let remaining    = imgHeight;
-  let yOffset      = 0;
+  const imgHeight = (canvas.height * pageWidth) / canvas.width;
+  let remaining = imgHeight;
+  let yOffset = 0;
 
   // ── Write content pages ──
   pdf.addImage(imgData, 'PNG', 0, yOffset, pageWidth, imgHeight);
@@ -171,7 +171,7 @@ export async function downloadAsPDF(elementId: string, filename: string): Promis
 
   // ── Watermark — applied on top of every page ──
   const totalPages = (pdf as any).getNumberOfPages();
-  const cx = pageWidth  / 2;   // 105 mm  (horizontal centre)
+  const cx = pageWidth / 2;   // 105 mm  (horizontal centre)
   const cy = pageHeight / 2;   // 148.5 mm (vertical centre)
 
   for (let p = 1; p <= totalPages; p++) {
@@ -186,14 +186,6 @@ export async function downloadAsPDF(elementId: string, filename: string): Promis
       'THIS TEMPLATE IS DEMO TEMPLATE',
       cx,
       cy - 7,
-      { align: 'center', angle: 45 }
-    );
-
-    // Line 2 — slightly below centre
-    pdf.text(
-      'CAN BE REPLACABLE AS PER REQUIREMENTS',
-      cx,
-      cy + 7,
       { align: 'center', angle: 45 }
     );
 
