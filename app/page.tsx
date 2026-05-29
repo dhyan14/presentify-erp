@@ -66,14 +66,14 @@ export default function LoginPage() {
         {/* Branding */}
         <div className="text-center mb-10 animate-fade-in">
           <div className="flex items-center justify-center gap-3 mb-4">
-            <div className="w-14 h-14 bg-blue-500 rounded-2xl flex items-center justify-center shadow-2xl shadow-blue-500/40 ring-1 ring-blue-400/30">
-              <GraduationCap className="w-8 h-8 text-white" />
+            <div className="w-14 h-14 flex items-center justify-center">
+              <img src="/logo.webp" alt="Presentify" className="w-14 h-14 object-contain" />
             </div>
             <div className="text-left">
               <h1 className="text-4xl font-extrabold text-white tracking-tight leading-none">
                 Presentify
               </h1>
-              <p className="text-blue-400 text-sm font-medium tracking-widest uppercase mt-0.5">
+              <p className="text-violet-400 text-sm font-medium tracking-widest uppercase mt-0.5">
                 Academic ERP
               </p>
             </div>

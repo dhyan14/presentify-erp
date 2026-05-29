@@ -91,21 +91,12 @@ export default function Sidebar({ activeModule, onModuleChange, isOpen, onClose 
           <div className="flex items-center justify-between">
             {/* Presentify logo: stylised "p" icon + text */}
             <div className="flex items-center gap-3">
-              {/* SVG "p" mark — matches real Presentify brand */}
-              <svg viewBox="0 0 38 50" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-8 h-10 shrink-0">
-                <defs>
-                  <linearGradient id="pLogoGrad" x1="0" y1="0" x2="38" y2="50" gradientUnits="userSpaceOnUse">
-                    <stop stopColor="#7C5CFC" />
-                    <stop offset="1" stopColor="#4F3AC7" />
-                  </linearGradient>
-                </defs>
-                {/* Stem */}
-                <rect x="0" y="0" width="9" height="50" rx="4.5" fill="url(#pLogoGrad)" />
-                {/* Bowl */}
-                <circle cx="22" cy="19" r="16" fill="url(#pLogoGrad)" />
-                {/* Inner cutout */}
-                <circle cx="22" cy="19" r="9" fill="white" />
-              </svg>
+              {/* Real Presentify logo from /public/logo.webp */}
+              <img
+                src="/logo.webp"
+                alt="Presentify"
+                className="w-9 h-9 object-contain shrink-0"
+              />
 
               <div className="leading-tight">
                 <p className="text-[#4F3AC7] font-extrabold text-lg tracking-tight leading-none">Presentify</p>
