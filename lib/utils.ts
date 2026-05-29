@@ -124,6 +124,7 @@ export function formatDateTime(iso: string): string {
 /**
  * Download a DOM element as a PDF file.
  * Uses dynamic imports of jsPDF + html2canvas to avoid SSR issues.
+ * Adds a diagonal demo watermark on every page automatically.
  *
  * @param elementId  - id of the HTML element to capture
  * @param filename   - output filename, e.g. "hall-ticket.pdf"
@@ -157,6 +158,7 @@ export async function downloadAsPDF(elementId: string, filename: string): Promis
   let remaining    = imgHeight;
   let yOffset      = 0;
 
+  // ── Write content pages ──
   pdf.addImage(imgData, 'PNG', 0, yOffset, pageWidth, imgHeight);
   remaining -= pageHeight;
 
@@ -167,5 +169,38 @@ export async function downloadAsPDF(elementId: string, filename: string): Promis
     remaining -= pageHeight;
   }
 
+  // ── Watermark — applied on top of every page ──
+  const totalPages = (pdf as any).getNumberOfPages();
+  const cx = pageWidth  / 2;   // 105 mm  (horizontal centre)
+  const cy = pageHeight / 2;   // 148.5 mm (vertical centre)
+
+  for (let p = 1; p <= totalPages; p++) {
+    pdf.setPage(p);
+
+    // Light grey, semi-transparent feel via colour choice
+    pdf.setTextColor(170, 170, 170);   // #aaaaaa
+    pdf.setFontSize(15);
+
+    // Line 1 — slightly above centre
+    pdf.text(
+      'THIS TEMPLATE IS DEMO TEMPLATE',
+      cx,
+      cy - 7,
+      { align: 'center', angle: 45 }
+    );
+
+    // Line 2 — slightly below centre
+    pdf.text(
+      'CAN BE REPLACABLE AS PER REQUIREMENTS',
+      cx,
+      cy + 7,
+      { align: 'center', angle: 45 }
+    );
+
+    // Reset colours for safety
+    pdf.setTextColor(0, 0, 0);
+  }
+
   pdf.save(filename);
 }
+
