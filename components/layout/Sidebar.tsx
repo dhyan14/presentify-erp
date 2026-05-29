@@ -89,38 +89,38 @@ export default function Sidebar({ activeModule, onModuleChange, isOpen, onClose 
         {/* ── Logo / Brand ── */}
         <div className="flex-shrink-0 px-5 py-5 border-b border-slate-100">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              {/* Purple "P" logo pill */}
-              <div className="w-8 h-8 bg-violet-600 rounded-lg flex items-center justify-center shadow-sm shadow-violet-200">
-                <span className="text-white font-extrabold text-sm">P</span>
-              </div>
-              <div>
-                <span className="text-slate-900 font-extrabold text-base tracking-tight">Presentify</span>
-                <p className="text-slate-400 text-[10px] leading-none mt-0.5">Academic ERP</p>
+            {/* Presentify logo: stylised "p" icon + text */}
+            <div className="flex items-center gap-3">
+              {/* SVG "p" mark — matches real Presentify brand */}
+              <svg viewBox="0 0 38 50" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-8 h-10 shrink-0">
+                <defs>
+                  <linearGradient id="pLogoGrad" x1="0" y1="0" x2="38" y2="50" gradientUnits="userSpaceOnUse">
+                    <stop stopColor="#7C5CFC" />
+                    <stop offset="1" stopColor="#4F3AC7" />
+                  </linearGradient>
+                </defs>
+                {/* Stem */}
+                <rect x="0" y="0" width="9" height="50" rx="4.5" fill="url(#pLogoGrad)" />
+                {/* Bowl */}
+                <circle cx="22" cy="19" r="16" fill="url(#pLogoGrad)" />
+                {/* Inner cutout */}
+                <circle cx="22" cy="19" r="9" fill="white" />
+              </svg>
+
+              <div className="leading-tight">
+                <p className="text-[#4F3AC7] font-extrabold text-lg tracking-tight leading-none">Presentify</p>
+                <p className="text-slate-400 text-[11px] mt-0.5">Attendance, Reimagined</p>
               </div>
             </div>
+
             {/* Mobile close */}
             <button
               onClick={onClose}
-              className="lg:hidden text-slate-400 hover:text-slate-600 transition-colors"
+              className="lg:hidden text-slate-400 hover:text-slate-600 transition-colors ml-2"
               aria-label="Close sidebar"
             >
               <X className="w-5 h-5" />
             </button>
-          </div>
-
-          {/* Role badge */}
-          <div className="mt-3">
-            <span
-              className={clsx(
-                'inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full border',
-                isTeacher
-                  ? 'bg-violet-50 text-violet-700 border-violet-200'
-                  : 'bg-violet-50 text-violet-600 border-violet-200'
-              )}
-            >
-              {isTeacher ? '🎓 Faculty Portal' : '📚 Student Portal'}
-            </span>
           </div>
         </div>
 
