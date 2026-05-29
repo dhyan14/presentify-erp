@@ -1,56 +1,133 @@
 'use client';
 
-import { useState } from 'react';
-import { useApp } from '@/context/AppContext';
-import { MOCK_CLASSROOMS } from '@/lib/mockData';
+import { useState, useEffect, useCallback } from 'react';
+import { useSession, signIn, signOut } from 'next-auth/react';
 import {
   Wifi, WifiOff, ExternalLink, FileText, Archive,
   Megaphone, ClipboardList, ChevronLeft, Download,
-  CheckCircle2, AlertCircle, Calendar, Users,
+  CheckCircle2, AlertCircle, Calendar, Users, Loader2,
+  LogOut, RefreshCw,
 } from 'lucide-react';
 import clsx from 'clsx';
 
-type FeedTab = 'announcements' | 'resources' | 'assignments';
+// ── Types matching Google Classroom API responses ──────────────────────────
+interface GCourse {
+  id: string;
+  name: string;
+  section?: string;
+  descriptionHeading?: string;
+  room?: string;
+  ownerId?: string;
+  courseState: string;
+  alternateLink: string;
+  creationTime: string;
+  enrollmentCode?: string;
+}
 
-type Classroom = typeof MOCK_CLASSROOMS[number];
+interface GAnnouncement {
+  id: string;
+  text: string;
+  creationTime: string;
+  updateTime: string;
+  alternateLink: string;
+  materials?: GMaterial[];
+}
+
+interface GWork {
+  id: string;
+  title: string;
+  description?: string;
+  maxPoints?: number;
+  dueDate?: { year: number; month: number; day: number };
+  state: string;
+  alternateLink: string;
+  workType: string;
+}
+
+interface GMaterialItem {
+  id: string;
+  title: string;
+  materials?: GMaterial[];
+  alternateLink: string;
+  creationTime: string;
+}
+
+interface GMaterial {
+  driveFile?:     { driveFile: { title: string; alternateLink: string } };
+  youtubeVideo?:  { title: string; alternateLink: string };
+  link?:          { url: string; title: string };
+  form?:          { title: string; formUrl: string };
+}
+
+type FeedTab = 'announcements' | 'materials' | 'assignments';
+
+const COURSE_COLORS = [
+  'from-violet-500 to-indigo-600',
+  'from-blue-500 to-cyan-600',
+  'from-emerald-500 to-teal-600',
+  'from-rose-500 to-pink-600',
+  'from-amber-500 to-orange-600',
+  'from-purple-500 to-fuchsia-600',
+];
 
 export default function ClassroomHub() {
-  const { state, dispatch } = useApp();
-  const isConnected = state.classroomConnected;
-  const [connecting, setConnecting] = useState(false);
-  const [selectedCourse, setSelectedCourse] = useState<Classroom | null>(null);
-  const [feedTab, setFeedTab] = useState<FeedTab>('announcements');
+  const { data: session, status } = useSession();
+  const isConnected = status === 'authenticated' && !!session?.accessToken;
+  const isLoading   = status === 'loading';
 
-  const handleSync = async () => {
-    setConnecting(true);
-    await new Promise((res) => setTimeout(res, 2000));
-    dispatch({ type: 'CONNECT_CLASSROOM' });
-    setConnecting(false);
-  };
+  const [courses,    setCourses]    = useState<GCourse[]>([]);
+  const [fetching,   setFetching]   = useState(false);
+  const [selected,   setSelected]   = useState<GCourse | null>(null);
+  const [error,      setError]      = useState<string | null>(null);
 
-  if (selectedCourse) {
+  const fetchCourses = useCallback(async () => {
+    if (!isConnected) return;
+    setFetching(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/classroom/courses');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data: GCourse[] = await res.json();
+      setCourses(data);
+    } catch (e: any) {
+      setError('Failed to load courses. Please try reconnecting.');
+    } finally {
+      setFetching(false);
+    }
+  }, [isConnected]);
+
+  // Auto-fetch courses when session is available
+  useEffect(() => {
+    if (isConnected && courses.length === 0) fetchCourses();
+  }, [isConnected]);              // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <Loader2 className="w-8 h-8 animate-spin text-violet-500" />
+      </div>
+    );
+  }
+
+  if (selected) {
     return (
       <CourseDetail
-        course={selectedCourse}
-        feedTab={feedTab}
-        onFeedTabChange={setFeedTab}
-        onBack={() => { setSelectedCourse(null); setFeedTab('announcements'); }}
+        course={selected}
+        accessToken={session?.accessToken ?? ''}
+        onBack={() => setSelected(null)}
       />
     );
   }
 
   return (
     <div className="space-y-6">
-      {/* ── Sync banner ── */}
+      {/* ── Connection banner ── */}
       <div className={clsx(
         'rounded-2xl border px-6 py-5 flex flex-wrap items-center justify-between gap-4',
-        isConnected
-          ? 'bg-emerald-50 border-emerald-200'
-          : 'bg-slate-900 border-slate-700'
+        isConnected ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-900 border-slate-700'
       )}>
         <div className="flex items-center gap-4">
-          <div className={clsx(
-            'w-12 h-12 rounded-xl flex items-center justify-center',
+          <div className={clsx('w-12 h-12 rounded-xl flex items-center justify-center',
             isConnected ? 'bg-emerald-100' : 'bg-slate-800'
           )}>
             {isConnected
@@ -60,110 +137,129 @@ export default function ClassroomHub() {
           </div>
           <div>
             <p className={clsx('font-bold text-sm', isConnected ? 'text-emerald-800' : 'text-white')}>
-              {isConnected ? 'Institutional Workspace — Synced' : 'Sync Institutional Workspace Account'}
+              {isConnected
+                ? `Connected as ${session?.user?.email}`
+                : 'Connect your Google Workspace Account'
+              }
             </p>
             <p className={clsx('text-xs mt-0.5', isConnected ? 'text-emerald-600' : 'text-slate-400')}>
               {isConnected
-                ? `Connected as presentify.edu.in · ${MOCK_CLASSROOMS.length} active classrooms loaded`
-                : 'Connect your Google Workspace to access classrooms, resources & assignments'
+                ? `${courses.length} active classroom${courses.length !== 1 ? 's' : ''} loaded`
+                : 'Sign in with Google to access your classrooms, resources & assignments'
               }
             </p>
           </div>
         </div>
 
-        {!isConnected && (
-          <button
-            id="btn-sync-classroom"
-            onClick={handleSync}
-            disabled={connecting}
-            className="flex items-center gap-2.5 bg-white hover:bg-slate-50 text-slate-900 px-5 py-3 rounded-xl font-bold text-sm transition-all shadow-md disabled:opacity-60"
-          >
-            {connecting ? (
-              <>
-                <span className="w-4 h-4 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
-                Connecting…
-              </>
-            ) : (
-              <>
-                <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none">
-                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
-                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-                </svg>
-                Sync with Google Workspace
-              </>
-            )}
-          </button>
-        )}
-
-        {isConnected && (
-          <div className="flex items-center gap-2 text-emerald-600 text-sm font-semibold">
-            <CheckCircle2 className="w-5 h-5" /> Connected &amp; Synced
-          </div>
-        )}
+        <div className="flex items-center gap-3">
+          {!isConnected ? (
+            <button
+              id="btn-sync-classroom"
+              onClick={() => signIn('google', { callbackUrl: '/dashboard' })}
+              className="flex items-center gap-2.5 bg-white hover:bg-slate-50 text-slate-900 px-5 py-3 rounded-xl font-bold text-sm transition-all shadow-md"
+            >
+              {/* Google G mark */}
+              <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none">
+                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+              </svg>
+              Sign in with Google Workspace
+            </button>
+          ) : (
+            <>
+              <button
+                onClick={fetchCourses}
+                disabled={fetching}
+                className="flex items-center gap-1.5 text-emerald-700 bg-emerald-100 hover:bg-emerald-200 border border-emerald-200 px-3 py-2 rounded-lg text-xs font-semibold transition-all disabled:opacity-50"
+              >
+                <RefreshCw className={clsx('w-3.5 h-3.5', fetching && 'animate-spin')} />
+                Refresh
+              </button>
+              <button
+                onClick={() => signOut({ callbackUrl: '/dashboard' })}
+                className="flex items-center gap-1.5 text-slate-500 hover:text-red-500 bg-white border border-slate-200 px-3 py-2 rounded-lg text-xs font-semibold transition-all"
+              >
+                <LogOut className="w-3.5 h-3.5" /> Disconnect
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
-      {!isConnected ? (
-        /* Pre-connect placeholder */
+      {/* ── Error state ── */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-5 py-4 rounded-xl text-sm font-semibold flex items-center gap-3">
+          <AlertCircle className="w-5 h-5 shrink-0" /> {error}
+        </div>
+      )}
+
+      {/* ── Not connected placeholder ── */}
+      {!isConnected && (
         <div className="bg-white rounded-2xl border border-slate-200 p-16 text-center">
           <div className="w-20 h-20 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-5">
             <WifiOff className="w-10 h-10 text-slate-300" />
           </div>
-          <h3 className="text-slate-900 font-extrabold text-xl mb-2">Not Connected Yet</h3>
+          <h3 className="text-slate-900 font-extrabold text-xl mb-2">Not Connected</h3>
           <p className="text-slate-400 text-sm max-w-sm mx-auto">
-            Click the "Sync with Google Workspace" button above to connect your institutional account and view your active classrooms.
+            Sign in with your Google Workspace account to load your live classrooms, announcements, resources and assignments.
           </p>
           <div className="flex flex-wrap justify-center gap-2 mt-6">
-            {['Announcements', 'Resources', 'Assignments', 'Due Dates'].map((f) => (
+            {['Live Announcements', 'Resources', 'Assignments', 'Due Dates'].map((f) => (
               <span key={f} className="text-xs text-slate-400 border border-slate-200 px-3 py-1 rounded-full">{f}</span>
             ))}
           </div>
         </div>
-      ) : (
-        /* Course cards grid */
+      )}
+
+      {/* ── Loading skeleton ── */}
+      {isConnected && fetching && courses.length === 0 && (
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="bg-white rounded-2xl border border-slate-200 overflow-hidden animate-pulse">
+              <div className="h-20 bg-slate-200" />
+              <div className="p-5 space-y-3">
+                <div className="h-4 bg-slate-100 rounded w-3/4" />
+                <div className="h-3 bg-slate-100 rounded w-1/2" />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── Course grid ── */}
+      {isConnected && courses.length > 0 && (
         <div>
-          <h3 className="font-bold text-slate-900 mb-4">Active Classrooms ({MOCK_CLASSROOMS.length})</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-bold text-slate-900">Active Classrooms ({courses.length})</h3>
+            <div className="flex items-center gap-2 text-emerald-600 text-xs font-semibold">
+              <CheckCircle2 className="w-4 h-4" /> Live from Google Classroom
+            </div>
+          </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {MOCK_CLASSROOMS.map((course) => (
+            {courses.map((course, idx) => (
               <button
                 key={course.id}
                 id={`course-${course.id}`}
-                onClick={() => setSelectedCourse(course)}
+                onClick={() => setSelected(course)}
                 className="group bg-white rounded-2xl border border-slate-200 overflow-hidden hover:shadow-xl hover:border-slate-300 hover:-translate-y-0.5 transition-all duration-200 text-left"
               >
-                {/* Colored header */}
-                <div className={`h-20 bg-gradient-to-br ${course.colorClass} relative overflow-hidden`}>
-                  <div
-                    className="absolute inset-0 opacity-20"
-                    style={{ backgroundImage: 'repeating-linear-gradient(-45deg,transparent,transparent 8px,rgba(255,255,255,.2) 8px,rgba(255,255,255,.2) 16px)' }}
-                  />
-                  <div className="absolute bottom-3 left-4 text-white">
-                    <p className="text-[10px] font-semibold opacity-80 uppercase tracking-wider">{course.code}</p>
+                <div className={`h-20 bg-gradient-to-br ${COURSE_COLORS[idx % COURSE_COLORS.length]} relative overflow-hidden`}>
+                  <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'repeating-linear-gradient(-45deg,transparent,transparent 8px,rgba(255,255,255,.2) 8px,rgba(255,255,255,.2) 16px)' }} />
+                  <div className="absolute bottom-3 left-4 right-4">
+                    <p className="text-[10px] font-semibold text-white/80 uppercase tracking-wider truncate">{course.section ?? 'No section'}</p>
                   </div>
                 </div>
-
                 <div className="p-5">
-                  <h4 className="font-bold text-slate-900 text-sm leading-tight mb-1">{course.name}</h4>
-                  <p className="text-slate-400 text-xs mb-4">{course.section}</p>
-
-                  <div className="flex items-center gap-4 text-xs text-slate-500">
-                    <span className="flex items-center gap-1">
-                      <Users className="w-3.5 h-3.5" /> {course.students}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Megaphone className="w-3.5 h-3.5" /> {course.announcements.length}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <ClipboardList className="w-3.5 h-3.5" /> {course.assignments.length}
-                    </span>
-                  </div>
-
-                  <div className="mt-3 flex items-center justify-between">
-                    <span className="text-xs text-slate-500 truncate">{course.teacher}</span>
-                    <span className="text-xs text-blue-600 font-semibold group-hover:underline">
-                      Open →
-                    </span>
+                  <h4 className="font-bold text-slate-900 text-sm leading-tight mb-3 line-clamp-2">{course.name}</h4>
+                  <div className="flex items-center justify-between">
+                    {course.enrollmentCode && (
+                      <span className="text-xs text-slate-400 font-mono bg-slate-50 px-2 py-1 rounded-lg">
+                        Code: {course.enrollmentCode}
+                      </span>
+                    )}
+                    <span className="text-xs text-violet-600 font-semibold ml-auto group-hover:underline">Open →</span>
                   </div>
                 </div>
               </button>
@@ -171,193 +267,236 @@ export default function ClassroomHub() {
           </div>
         </div>
       )}
+
+      {/* ── Empty courses ── */}
+      {isConnected && !fetching && courses.length === 0 && !error && (
+        <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
+          <div className="w-16 h-16 bg-violet-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <BookOpen className="w-8 h-8 text-violet-500" />
+          </div>
+          <h3 className="text-slate-900 font-bold text-lg mb-2">No Active Classrooms</h3>
+          <p className="text-slate-400 text-sm">No active courses found in your Google Classroom account.</p>
+        </div>
+      )}
     </div>
   );
 }
 
-function CourseDetail({
-  course, feedTab, onFeedTabChange, onBack,
-}: {
-  course: Classroom;
-  feedTab: FeedTab;
-  onFeedTabChange: (t: FeedTab) => void;
+// ── Course Detail View ────────────────────────────────────────────────────
+function CourseDetail({ course, accessToken, onBack }: {
+  course: GCourse;
+  accessToken: string;
   onBack: () => void;
 }) {
-  const pendingAssignments = course.assignments.filter((a) => !a.submitted);
+  const [feedTab,       setFeedTab]       = useState<FeedTab>('announcements');
+  const [announcements, setAnnouncements] = useState<GAnnouncement[]>([]);
+  const [assignments,   setAssignments]   = useState<GWork[]>([]);
+  const [materials,     setMaterials]     = useState<GMaterialItem[]>([]);
+  const [loading,       setLoading]       = useState(true);
+  const [error,         setError]         = useState<string | null>(null);
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch(`/api/classroom/course-detail?courseId=${course.id}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        setAnnouncements(data.announcements ?? []);
+        setAssignments(data.assignments ?? []);
+        setMaterials(data.materials ?? []);
+      } catch {
+        setError('Failed to load course details.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, [course.id]);
+
+  const formatDate = (iso: string) =>
+    new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+
+  const formatDue = (d?: { year: number; month: number; day: number }) =>
+    d ? new Date(d.year, d.month - 1, d.day).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }) : 'No due date';
+
+  const isOverdue = (d?: { year: number; month: number; day: number }) =>
+    d ? new Date(d.year, d.month - 1, d.day) < new Date() : false;
+
   return (
     <div className="space-y-5">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <button
-          onClick={onBack}
-          className="flex items-center gap-1.5 text-slate-500 hover:text-slate-800 text-sm font-semibold transition-colors"
-        >
-          <ChevronLeft className="w-4 h-4" /> Back to Classrooms
-        </button>
-      </div>
+      {/* Back */}
+      <button onClick={onBack} className="flex items-center gap-1.5 text-slate-500 hover:text-slate-800 text-sm font-semibold transition-colors">
+        <ChevronLeft className="w-4 h-4" /> Back to Classrooms
+      </button>
 
-      {/* Course banner */}
-      <div className={`h-32 bg-gradient-to-br ${course.colorClass} rounded-2xl relative overflow-hidden flex items-end`}>
-        <div className="absolute inset-0 opacity-20" style={{backgroundImage:'repeating-linear-gradient(-45deg,transparent,transparent 10px,rgba(255,255,255,.2) 10px,rgba(255,255,255,.2) 20px)'}} />
-        <div className="relative p-6 text-white">
-          <p className="text-xs font-semibold opacity-80 uppercase tracking-wider">{course.code}</p>
-          <h2 className="text-2xl font-extrabold leading-tight">{course.name}</h2>
-          <p className="text-sm opacity-80 mt-0.5">{course.section} &middot; {course.teacher}</p>
+      {/* Banner */}
+      <div className="h-32 bg-gradient-to-br from-violet-500 to-indigo-600 rounded-2xl relative overflow-hidden flex items-end">
+        <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'repeating-linear-gradient(-45deg,transparent,transparent 10px,rgba(255,255,255,.2) 10px,rgba(255,255,255,.2) 20px)' }} />
+        <div className="relative p-6 text-white flex items-end justify-between w-full">
+          <div>
+            <p className="text-xs font-semibold opacity-80 uppercase tracking-wider">{course.section ?? 'Classroom'}</p>
+            <h2 className="text-2xl font-extrabold leading-tight">{course.name}</h2>
+          </div>
+          <a
+            href={course.alternateLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 bg-white/20 hover:bg-white/30 text-white text-xs font-bold px-3 py-2 rounded-lg transition-all"
+          >
+            Open in Classroom <ExternalLink className="w-3.5 h-3.5" />
+          </a>
         </div>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
-        {[
-          { label: 'Students',     value: course.students.toString(),          icon: Users },
-          { label: 'Announcements',value: course.announcements.length.toString(), icon: Megaphone },
-          { label: 'Assignments',  value: `${pendingAssignments.length} pending`, icon: ClipboardList },
-        ].map((s) => {
-          const Icon = s.icon;
-          return (
-            <div key={s.label} className="bg-white rounded-xl border border-slate-200 p-4 text-center">
-              <Icon className="w-5 h-5 text-slate-400 mx-auto mb-2" />
-              <p className="text-slate-900 font-extrabold text-lg">{s.value}</p>
-              <p className="text-slate-400 text-xs">{s.label}</p>
-            </div>
-          );
-        })}
       </div>
 
       {/* Feed tabs */}
       <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
         <div className="flex border-b border-slate-200">
           {([
-            ['announcements', 'Announcements', Megaphone],
-            ['resources',     'Resources',     Archive],
-            ['assignments',   'Assignments',   ClipboardList],
-          ] as const).map(([id, label, Icon]) => (
+            ['announcements', 'Announcements', Megaphone, announcements.length],
+            ['materials',     'Resources',     Archive,   materials.length],
+            ['assignments',   'Assignments',   ClipboardList, assignments.length],
+          ] as const).map(([id, label, Icon, count]) => (
             <button
               key={id}
-              onClick={() => onFeedTabChange(id)}
+              onClick={() => setFeedTab(id)}
               className={clsx(
                 'flex-1 flex items-center justify-center gap-2 py-3.5 text-sm font-bold transition-all border-b-2',
                 feedTab === id
-                  ? 'text-blue-600 border-blue-600 bg-blue-50/40'
+                  ? 'text-violet-600 border-violet-600 bg-violet-50/40'
                   : 'text-slate-400 border-transparent hover:text-slate-600 hover:bg-slate-50'
               )}
             >
               <Icon className="w-4 h-4" /> {label}
+              {!loading && count > 0 && (
+                <span className="text-[10px] bg-slate-100 text-slate-500 font-bold px-1.5 py-0.5 rounded-full">{count}</span>
+              )}
             </button>
           ))}
         </div>
 
-        <div className="p-5 space-y-4 max-h-[480px] overflow-y-auto scrollbar-thin">
-          {/* Announcements */}
-          {feedTab === 'announcements' && (
-            course.announcements.map((ann) => (
-              <div key={ann.id} className="border border-slate-200 rounded-xl p-5 space-y-2 hover:border-slate-300 transition-colors">
-                <div className="flex justify-between items-start gap-3">
-                  <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center shrink-0 mt-0.5">
-                      <Megaphone className="w-4 h-4 text-blue-600" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-slate-900 text-sm">{ann.title}</h4>
-                      <p className="text-slate-400 text-xs mt-0.5">
-                        {course.teacher} &middot; {new Date(ann.date).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' })}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                <p className="text-slate-600 text-sm leading-relaxed ml-11">{ann.body}</p>
-                {ann.attachments.length > 0 && (
-                  <div className="ml-11 space-y-1.5">
-                    {ann.attachments.map((att) => (
-                      <div key={att.name} className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs">
-                        <FileText className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                        <span className="text-slate-700 font-medium flex-1 truncate">{att.name}</span>
-                        <span className="text-slate-400">{att.size}</span>
-                        <Download className="w-3.5 h-3.5 text-slate-400 cursor-pointer hover:text-blue-600" />
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))
+        <div className="p-5 max-h-[520px] overflow-y-auto space-y-4">
+          {loading && (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 className="w-8 h-8 animate-spin text-violet-400" />
+            </div>
           )}
 
-          {/* Resources */}
-          {feedTab === 'resources' && (
-            <div className="space-y-3">
-              {course.resources.map((res) => {
-                const isZip = res.type === 'zip';
-                return (
-                  <div key={res.id} className="flex items-center gap-4 border border-slate-200 rounded-xl px-5 py-4 hover:border-blue-300 hover:bg-blue-50/30 transition-all group cursor-pointer">
-                    <div className={clsx(
-                      'w-10 h-10 rounded-xl flex items-center justify-center shrink-0 font-bold text-xs',
-                      isZip ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'
-                    )}>
-                      {isZip ? 'ZIP' : 'PDF'}
+          {error && !loading && (
+            <div className="text-red-500 text-sm text-center py-8">{error}</div>
+          )}
+
+          {/* Announcements */}
+          {!loading && feedTab === 'announcements' && (
+            announcements.length === 0
+              ? <EmptyState label="No announcements yet" />
+              : announcements.map((ann) => (
+                  <div key={ann.id} className="border border-slate-200 rounded-xl p-5 space-y-2 hover:border-slate-300 transition-colors">
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 bg-violet-100 rounded-full flex items-center justify-center shrink-0 mt-0.5">
+                        <Megaphone className="w-4 h-4 text-violet-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-slate-400 text-xs mt-0.5">{formatDate(ann.creationTime)}</p>
+                        <p className="text-slate-800 text-sm mt-1 leading-relaxed whitespace-pre-line">{ann.text}</p>
+                        {ann.materials && ann.materials.length > 0 && (
+                          <div className="mt-3 space-y-1.5">
+                            {ann.materials.map((mat, i) => {
+                              const link = mat.driveFile?.driveFile.alternateLink ?? mat.youtubeVideo?.alternateLink ?? mat.link?.url ?? mat.form?.formUrl ?? '#';
+                              const title = mat.driveFile?.driveFile.title ?? mat.youtubeVideo?.title ?? mat.link?.title ?? mat.form?.title ?? 'Attachment';
+                              return (
+                                <a key={i} href={link} target="_blank" rel="noopener noreferrer"
+                                  className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs hover:border-violet-300 transition-colors">
+                                  <FileText className="w-3.5 h-3.5 text-violet-500 shrink-0" />
+                                  <span className="text-slate-700 font-medium flex-1 truncate">{title}</span>
+                                  <ExternalLink className="w-3 h-3 text-slate-400" />
+                                </a>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))
+          )}
+
+          {/* Materials */}
+          {!loading && feedTab === 'materials' && (
+            materials.length === 0
+              ? <EmptyState label="No resources posted yet" />
+              : materials.map((mat) => (
+                  <a key={mat.id} href={mat.alternateLink} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-4 border border-slate-200 rounded-xl px-5 py-4 hover:border-violet-300 hover:bg-violet-50/30 transition-all group cursor-pointer">
+                    <div className="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center shrink-0">
+                      <Archive className="w-5 h-5 text-violet-600" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-slate-900 font-semibold text-sm truncate">{res.name}</p>
-                      <p className="text-slate-400 text-xs mt-0.5">
-                        {res.size} &middot; Uploaded {new Date(res.uploaded).toLocaleDateString('en-IN', { day:'2-digit', month:'short' })}
-                      </p>
+                      <p className="text-slate-900 font-semibold text-sm truncate">{mat.title}</p>
+                      <p className="text-slate-400 text-xs mt-0.5">{formatDate(mat.creationTime)}</p>
                     </div>
-                    <button className="flex items-center gap-1.5 text-blue-600 text-xs font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Download className="w-4 h-4" /> Download
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
+                    <ExternalLink className="w-4 h-4 text-slate-400 group-hover:text-violet-600 transition-colors" />
+                  </a>
+                ))
           )}
 
           {/* Assignments */}
-          {feedTab === 'assignments' && (
-            <div className="space-y-3">
-              {course.assignments.map((asgn) => {
-                const dueDate  = new Date(asgn.dueDate);
-                const isOverdue = !asgn.submitted && dueDate < new Date();
-                return (
-                  <div key={asgn.id} className={clsx(
-                    'border rounded-xl px-5 py-4 space-y-2',
-                    asgn.submitted
-                      ? 'border-emerald-200 bg-emerald-50/40'
-                      : isOverdue
-                        ? 'border-red-200 bg-red-50/40'
-                        : 'border-slate-200 bg-white'
-                  )}>
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-start gap-3">
-                        <ClipboardList className={clsx('w-5 h-5 mt-0.5 shrink-0', asgn.submitted ? 'text-emerald-600' : isOverdue ? 'text-red-500' : 'text-slate-500')} />
-                        <div>
-                          <p className="text-slate-900 font-bold text-sm">{asgn.name}</p>
-                          <p className="text-slate-400 text-xs mt-0.5">Max Marks: {asgn.maxMarks}</p>
+          {!loading && feedTab === 'assignments' && (
+            assignments.length === 0
+              ? <EmptyState label="No assignments posted yet" />
+              : assignments.map((asgn) => {
+                  const overdue = isOverdue(asgn.dueDate);
+                  return (
+                    <a key={asgn.id} href={asgn.alternateLink} target="_blank" rel="noopener noreferrer"
+                      className={clsx('block border rounded-xl px-5 py-4 space-y-2 transition-all hover:shadow-sm',
+                        overdue ? 'border-red-200 bg-red-50/40' : 'border-slate-200 bg-white hover:border-violet-300'
+                      )}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-3">
+                          <ClipboardList className={clsx('w-5 h-5 mt-0.5 shrink-0', overdue ? 'text-red-500' : 'text-slate-400')} />
+                          <div>
+                            <p className="text-slate-900 font-bold text-sm">{asgn.title}</p>
+                            {asgn.description && <p className="text-slate-500 text-xs mt-0.5 line-clamp-2">{asgn.description}</p>}
+                            {asgn.maxPoints != null && (
+                              <p className="text-slate-400 text-xs mt-0.5">Max marks: {asgn.maxPoints}</p>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                      {asgn.submitted ? (
-                        <span className="inline-flex items-center gap-1 text-xs font-bold bg-emerald-100 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-full whitespace-nowrap">
-                          <CheckCircle2 className="w-3 h-3" /> Submitted
-                        </span>
-                      ) : (
                         <span className={clsx(
-                          'inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full border whitespace-nowrap',
-                          isOverdue ? 'bg-red-100 text-red-700 border-red-200' : 'bg-amber-100 text-amber-700 border-amber-200'
+                          'inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full border whitespace-nowrap shrink-0',
+                          overdue ? 'bg-red-100 text-red-700 border-red-200' : 'bg-amber-100 text-amber-700 border-amber-200'
                         )}>
-                          {isOverdue ? <AlertCircle className="w-3 h-3" /> : <Calendar className="w-3 h-3" />}
-                          {isOverdue ? 'Overdue' : 'Pending'}
+                          {overdue ? <AlertCircle className="w-3 h-3" /> : <Calendar className="w-3 h-3" />}
+                          {overdue ? 'Overdue' : 'Pending'}
                         </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1.5 text-xs text-slate-500 ml-8">
-                      <Calendar className="w-3.5 h-3.5" />
-                      Due: {dueDate.toLocaleDateString('en-IN', { day:'2-digit', month:'long', year:'numeric' })}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-xs text-slate-500 ml-8">
+                        <Calendar className="w-3.5 h-3.5" /> Due: {formatDue(asgn.dueDate)}
+                      </div>
+                    </a>
+                  );
+                })
           )}
         </div>
       </div>
     </div>
+  );
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────
+function EmptyState({ label }: { label: string }) {
+  return (
+    <div className="py-12 text-center">
+      <p className="text-slate-400 text-sm">{label}</p>
+    </div>
+  );
+}
+
+function BookOpen({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .513v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+    </svg>
   );
 }
