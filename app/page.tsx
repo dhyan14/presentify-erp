@@ -96,15 +96,15 @@ export default function LoginPage() {
             id="btn-demo-student"
             onClick={() => handleLogin('student')}
             disabled={loading !== null}
-            className="group relative text-left p-8 rounded-2xl border border-slate-700/60 bg-slate-800/40 backdrop-blur-xl hover:border-blue-500/60 hover:bg-slate-800/60 transition-all duration-300 hover:shadow-2xl hover:shadow-blue-500/10 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+            className="group relative text-left p-8 rounded-2xl border border-slate-700/60 bg-slate-800/40 backdrop-blur-xl hover:border-violet-500/60 hover:bg-slate-800/60 transition-all duration-300 hover:shadow-2xl hover:shadow-violet-500/10 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-violet-500/50"
           >
             {/* hover glow */}
             <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-blue-500/6 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
             <div className="relative space-y-5">
               {/* Icon */}
-              <div className="w-14 h-14 rounded-xl border border-blue-500/30 bg-blue-500/15 flex items-center justify-center group-hover:bg-blue-500/25 transition-colors">
-                <BookOpen className="w-7 h-7 text-blue-400" />
+              <div className="w-14 h-14 rounded-xl border border-violet-500/30 bg-violet-500/15 flex items-center justify-center group-hover:bg-violet-500/25 transition-colors">
+                <BookOpen className="w-7 h-7 text-violet-400" />
               </div>
 
               <div>
@@ -127,10 +127,10 @@ export default function LoginPage() {
               </div>
 
               {/* CTA */}
-              <div className="flex items-center gap-2 text-blue-400 font-semibold text-sm">
+              <div className="flex items-center gap-2 text-violet-400 font-semibold text-sm">
                 {loading === 'student' ? (
                   <>
-                    <span className="w-4 h-4 rounded-full border-2 border-blue-400 border-t-transparent animate-spin" />
+                    <span className="w-4 h-4 rounded-full border-2 border-violet-400 border-t-transparent animate-spin" />
                     Signing in…
                   </>
                 ) : (

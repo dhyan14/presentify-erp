@@ -85,7 +85,7 @@ export default function Topbar({ activeModule, onMenuClick }: TopbarProps) {
         <div
           className={clsx(
             'w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white cursor-default select-none',
-            isTeacher ? 'bg-indigo-500' : 'bg-blue-500'
+            isTeacher ? 'bg-violet-600' : 'bg-violet-500'
           )}
           title={user?.name}
         >

@@ -10,7 +10,7 @@ import {
 export default function StudentProfile() {
   const { state } = useApp();
   const student = state.currentUser as StudentUser;
-  const att = MOCK_ATTENDANCE[student.rollNo as keyof typeof MOCK_ATTENDANCE];
+  const att     = MOCK_ATTENDANCE[student.rollNo as keyof typeof MOCK_ATTENDANCE];
 
   const initials = student.name
     .split(' ')
@@ -25,53 +25,39 @@ export default function StudentProfile() {
 
   return (
     <div className="space-y-6">
-      {/* ── Profile hero card ── */}
-      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-        {/* Banner */}
-        <div className="h-36 bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600 relative overflow-hidden">
-          <div
-            className="absolute inset-0 opacity-20"
-            style={{
-              backgroundImage:
-                'repeating-linear-gradient(-45deg, transparent, transparent 12px, rgba(255,255,255,0.15) 12px, rgba(255,255,255,0.15) 24px)',
-            }}
-          />
-        </div>
-
-        <div className="px-6 md:px-8 pb-8 -mt-14">
+      {/* ── Profile header card (no banner) ── */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-6 md:p-8">
+        <div className="flex flex-wrap items-start gap-5">
           {/* Avatar */}
-          <div className="w-24 h-24 rounded-2xl bg-white border-4 border-white shadow-xl mb-4 flex items-center justify-center">
-            <div className="w-full h-full rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-2xl font-extrabold">
-              {initials}
+          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white text-2xl font-extrabold shadow-lg shadow-violet-200 shrink-0">
+            {initials}
+          </div>
+
+          {/* Name + badges */}
+          <div className="flex-1 min-w-0">
+            <h1 className="text-2xl font-extrabold text-slate-900">{student.name}</h1>
+            <p className="text-slate-400 mt-0.5 text-sm">{student.branch}</p>
+            <div className="flex flex-wrap items-center gap-2 mt-3">
+              <span className="text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-full">
+                ● {student.enrollmentStatus}
+              </span>
+              <span className="text-xs font-semibold bg-violet-50 text-violet-700 border border-violet-200 px-2.5 py-1 rounded-full">
+                Sem {student.semester} · Batch {student.batch}
+              </span>
+              <span className="text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200 px-2.5 py-1 rounded-full">
+                Section {student.section}
+              </span>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-start justify-between gap-4">
+          {/* Biometric key */}
+          <div className="flex items-center gap-3 bg-slate-900 text-white px-5 py-3 rounded-xl border border-slate-700 shrink-0">
+            <Shield className="w-4 h-4 text-violet-400 shrink-0" />
             <div>
-              <h1 className="text-2xl font-extrabold text-slate-900">{student.name}</h1>
-              <p className="text-slate-500 mt-1 text-sm">{student.branch}</p>
-              <div className="flex flex-wrap items-center gap-2 mt-2">
-                <span className="text-xs font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-full">
-                  ● {student.enrollmentStatus}
-                </span>
-                <span className="text-xs font-semibold bg-blue-100 text-blue-700 border border-blue-200 px-2.5 py-1 rounded-full">
-                  Sem {student.semester} &middot; Batch {student.batch}
-                </span>
-                <span className="text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200 px-2.5 py-1 rounded-full">
-                  Section {student.section}
-                </span>
-              </div>
-            </div>
-
-            {/* Biometric key badge */}
-            <div className="flex items-center gap-3 bg-slate-900 text-white px-5 py-3 rounded-xl border border-slate-700">
-              <Shield className="w-5 h-5 text-blue-400 shrink-0" />
-              <div>
-                <p className="text-slate-400 text-[10px] uppercase tracking-widest font-semibold">
-                  Biometric Key (Face ID)
-                </p>
-                <p className="text-blue-400 font-mono font-bold text-base">{student.faceId}</p>
-              </div>
+              <p className="text-slate-400 text-[10px] uppercase tracking-widest font-semibold">
+                Biometric Key (Face ID)
+              </p>
+              <p className="text-violet-400 font-mono font-bold text-base">{student.faceId}</p>
             </div>
           </div>
         </div>
@@ -80,25 +66,32 @@ export default function StudentProfile() {
       {/* ── Stat cards row ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Roll Number',    value: student.rollNo,              icon: Award,         bg: 'bg-blue-50 border-blue-200',    ic: 'text-blue-600' },
-          { label: 'Admission Year', value: student.admissionYear.toString(), icon: Calendar,  bg: 'bg-indigo-50 border-indigo-200', ic: 'text-indigo-600' },
-          { label: 'Section',        value: `Section ${student.section}`, icon: BookOpen,      bg: 'bg-violet-50 border-violet-200', ic: 'text-violet-600' },
+          { label: 'Roll Number',       value: student.rollNo,                  icon: Award,         color: 'violet' },
+          { label: 'Admission Year',    value: student.admissionYear.toString(), icon: Calendar,      color: 'indigo' },
+          { label: 'Section',           value: `Section ${student.section}`,    icon: BookOpen,      color: 'blue' },
           {
             label: 'Overall Attendance',
             value: `${att.overall}%`,
             icon: att.overall >= 75 ? CheckCircle2 : XCircle,
-            bg:   att.overall >= 75 ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200',
-            ic:   att.overall >= 75 ? 'text-emerald-600' : 'text-red-600',
+            color: att.overall >= 75 ? 'emerald' : 'red',
           },
         ].map((s) => {
           const Icon = s.icon;
+          const styles: Record<string, { border: string; iconBg: string; iconText: string; valText: string }> = {
+            violet:  { border: 'border-violet-100', iconBg: 'bg-violet-50 border-violet-200', iconText: 'text-violet-600', valText: 'text-violet-700' },
+            indigo:  { border: 'border-indigo-100', iconBg: 'bg-indigo-50 border-indigo-200', iconText: 'text-indigo-600', valText: 'text-indigo-700' },
+            blue:    { border: 'border-blue-100',   iconBg: 'bg-blue-50 border-blue-200',     iconText: 'text-blue-600',   valText: 'text-blue-700' },
+            emerald: { border: 'border-emerald-100',iconBg: 'bg-emerald-50 border-emerald-200',iconText: 'text-emerald-600',valText: 'text-emerald-700' },
+            red:     { border: 'border-red-100',    iconBg: 'bg-red-50 border-red-200',       iconText: 'text-red-500',    valText: 'text-red-600' },
+          };
+          const c = styles[s.color];
           return (
-            <div key={s.label} className={`bg-white rounded-xl border ${s.bg.split(' ')[1]} p-5`}>
-              <div className={`w-9 h-9 rounded-lg border ${s.bg} flex items-center justify-center mb-3`}>
-                <Icon className={`w-4 h-4 ${s.ic}`} />
+            <div key={s.label} className={`bg-white rounded-xl border ${c.border} p-5`}>
+              <div className={`w-9 h-9 rounded-lg border ${c.iconBg} flex items-center justify-center mb-3`}>
+                <Icon className={`w-4 h-4 ${c.iconText}`} />
               </div>
               <p className="text-slate-400 text-xs mb-1">{s.label}</p>
-              <p className={`font-extrabold text-lg ${s.ic}`}>{s.value}</p>
+              <p className={`font-extrabold text-lg ${c.valText}`}>{s.value}</p>
             </div>
           );
         })}
@@ -109,15 +102,15 @@ export default function StudentProfile() {
         {/* Personal info */}
         <div className="bg-white rounded-2xl border border-slate-200 p-6">
           <h3 className="font-bold text-slate-900 mb-5 flex items-center gap-2 text-sm">
-            <Mail className="w-4 h-4 text-blue-500" /> Personal Information
+            <Mail className="w-4 h-4 text-violet-500" /> Personal Information
           </h3>
           <div className="space-y-3">
             {[
-              { label: 'Email',        value: student.email,   Icon: Mail },
-              { label: 'Phone',        value: student.phone,   Icon: Phone },
-              { label: 'Date of Birth', value: dob,            Icon: Calendar },
-              { label: 'Blood Group',  value: student.bloodGroup, Icon: Droplets },
-              { label: 'Address',      value: student.address, Icon: MapPin },
+              { label: 'Email',         value: student.email,        Icon: Mail },
+              { label: 'Phone',         value: student.phone,        Icon: Phone },
+              { label: 'Date of Birth', value: dob,                  Icon: Calendar },
+              { label: 'Blood Group',   value: student.bloodGroup,   Icon: Droplets },
+              { label: 'Address',       value: student.address,      Icon: MapPin },
             ].map(({ label, value, Icon }) => (
               <div key={label} className="flex items-start gap-3 bg-slate-50 px-4 py-3 rounded-xl">
                 <Icon className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
@@ -130,10 +123,10 @@ export default function StudentProfile() {
           </div>
         </div>
 
-        {/* Attendance breakdown */}
+        {/* Attendance */}
         <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-5">
           <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-            <Wifi className="w-4 h-4 text-blue-500" /> Subject-wise Attendance
+            <Wifi className="w-4 h-4 text-violet-500" /> Subject-wise Attendance
           </h3>
 
           <div className="space-y-3">

@@ -41,9 +41,9 @@ const teacherNav = [
 
 export default function Sidebar({ activeModule, onModuleChange, isOpen, onClose }: SidebarProps) {
   const { state, dispatch } = useApp();
-  const user = state.currentUser;
+  const user      = state.currentUser;
   const isTeacher = user?.role === 'teacher';
-  const navItems = isTeacher ? teacherNav : studentNav;
+  const navItems  = isTeacher ? teacherNav : studentNav;
 
   const initials = user?.name
     .split(' ')
@@ -71,7 +71,7 @@ export default function Sidebar({ activeModule, onModuleChange, isOpen, onClose 
       {/* Mobile backdrop */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-20 lg:hidden"
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-20 lg:hidden"
           onClick={onClose}
           aria-hidden="true"
         />
@@ -80,25 +80,29 @@ export default function Sidebar({ activeModule, onModuleChange, isOpen, onClose 
       <aside
         className={clsx(
           'fixed top-0 left-0 h-full w-64 z-30 flex flex-col',
-          'bg-slate-900 border-r border-slate-800',
+          'bg-white border-r border-slate-100',
           'transition-transform duration-300 ease-in-out',
           'lg:translate-x-0',
           isOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
-        {/* ── Header ── */}
-        <div className="flex-shrink-0 px-5 py-5 border-b border-slate-800">
+        {/* ── Logo / Brand ── */}
+        <div className="flex-shrink-0 px-5 py-5 border-b border-slate-100">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/30">
-                <GraduationCap className="w-5 h-5 text-white" />
+              {/* Purple "P" logo pill */}
+              <div className="w-8 h-8 bg-violet-600 rounded-lg flex items-center justify-center shadow-sm shadow-violet-200">
+                <span className="text-white font-extrabold text-sm">P</span>
               </div>
-              <span className="text-white font-bold text-lg tracking-tight">Presentify</span>
+              <div>
+                <span className="text-slate-900 font-extrabold text-base tracking-tight">Presentify</span>
+                <p className="text-slate-400 text-[10px] leading-none mt-0.5">Academic ERP</p>
+              </div>
             </div>
-            {/* Close on mobile */}
+            {/* Mobile close */}
             <button
               onClick={onClose}
-              className="lg:hidden text-slate-400 hover:text-white transition-colors"
+              className="lg:hidden text-slate-400 hover:text-slate-600 transition-colors"
               aria-label="Close sidebar"
             >
               <X className="w-5 h-5" />
@@ -109,10 +113,10 @@ export default function Sidebar({ activeModule, onModuleChange, isOpen, onClose 
           <div className="mt-3">
             <span
               className={clsx(
-                'inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border',
+                'inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full border',
                 isTeacher
-                  ? 'bg-indigo-500/15 text-indigo-400 border-indigo-500/25'
-                  : 'bg-blue-500/15 text-blue-400 border-blue-500/25'
+                  ? 'bg-violet-50 text-violet-700 border-violet-200'
+                  : 'bg-violet-50 text-violet-600 border-violet-200'
               )}
             >
               {isTeacher ? '🎓 Faculty Portal' : '📚 Student Portal'}
@@ -121,12 +125,13 @@ export default function Sidebar({ activeModule, onModuleChange, isOpen, onClose 
         </div>
 
         {/* ── Navigation ── */}
-        <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto scrollbar-thin">
-          <p className="text-slate-500 text-[10px] font-semibold uppercase tracking-widest px-3 mb-2">
+        <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+          <p className="text-slate-400 text-[10px] font-semibold uppercase tracking-widest px-3 mb-2">
             Navigation
           </p>
+
           {navItems.map((item) => {
-            const Icon = item.icon;
+            const Icon     = item.icon;
             const isActive = activeModule === item.id;
             return (
               <button
@@ -136,14 +141,19 @@ export default function Sidebar({ activeModule, onModuleChange, isOpen, onClose 
                 className={clsx(
                   'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150',
                   isActive
-                    ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                    ? 'bg-violet-50 text-violet-700'
+                    : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
                 )}
               >
-                <Icon className="w-4 h-4 shrink-0" />
+                <Icon
+                  className={clsx(
+                    'w-4 h-4 shrink-0',
+                    isActive ? 'text-violet-600' : 'text-slate-400'
+                  )}
+                />
                 <span className="flex-1 text-left">{item.label}</span>
                 {isActive && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-white/60" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-violet-500" />
                 )}
               </button>
             );
@@ -151,24 +161,24 @@ export default function Sidebar({ activeModule, onModuleChange, isOpen, onClose 
         </nav>
 
         {/* ── User card at bottom ── */}
-        <div className="flex-shrink-0 p-3 border-t border-slate-800">
-          <div className="flex items-center gap-3 bg-slate-800/60 rounded-xl p-3">
+        <div className="flex-shrink-0 p-3 border-t border-slate-100">
+          <div className="flex items-center gap-3 bg-slate-50 border border-slate-100 rounded-xl p-3">
             <div
               className={clsx(
                 'w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0',
-                isTeacher ? 'bg-indigo-500' : 'bg-blue-500'
+                isTeacher ? 'bg-violet-600' : 'bg-violet-500'
               )}
             >
               {initials}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-white text-sm font-semibold truncate">{user?.name}</p>
+              <p className="text-slate-900 text-sm font-semibold truncate">{user?.name}</p>
               <p className="text-slate-400 text-xs font-mono truncate">{userId}</p>
             </div>
             <button
               onClick={handleLogout}
               title="Logout"
-              className="text-slate-400 hover:text-red-400 transition-colors shrink-0"
+              className="text-slate-300 hover:text-red-400 transition-colors shrink-0"
               aria-label="Logout"
             >
               <LogOut className="w-4 h-4" />
