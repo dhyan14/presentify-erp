@@ -89,3 +89,11 @@ input[type="number"] {
 .status-badge {
   transition: all 0.2s ease-in-out;
 }
+
+/* Reusable form input base style */
+.input-base {
+  @apply w-full px-4 py-3 text-sm border border-slate-200 rounded-xl transition-all;
+}
+.input-base:focus {
+  @apply outline-none ring-2 ring-blue-500 border-transparent;
+}
